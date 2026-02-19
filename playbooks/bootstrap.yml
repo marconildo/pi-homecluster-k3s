@@ -1,0 +1,34 @@
+---
+# Bootstrap: primeiro playbook a rodar após o flashcard.sh.
+# Instala o Python3, pré-requisito para os módulos Ansible funcionarem.
+# Usa 'raw' porque sem Python o Ansible não consegue executar módulos normais.
+# Conecta como root porque o usuário k3s ainda não existe neste ponto.
+# gather_facts está desabilitado porque depende de Python.
+
+- name: Bootstrap - Instalar Python nos nodes
+  hosts: all
+  gather_facts: false
+  remote_user: root
+
+  tasks:
+    # ========================================
+    # FASE 1: Instalar Python via raw
+    # ========================================
+
+    - name: Instalar Python3
+      raw: DEBIAN_FRONTEND=noninteractive apt update && DEBIAN_FRONTEND=noninteractive apt install -y python3=3.13.5*
+      register: python_install
+      changed_when: "'Setting up python3' in python_install.stdout"
+
+    # ========================================
+    # FASE 2: Validar instalação
+    # ========================================
+
+    - name: Testar Python instalado
+      raw: python3 --version
+      register: python_version
+      changed_when: false
+
+    - name: Exibir versão do Python
+      debug:
+        msg: "Python instalado: {{ python_version.stdout_lines[0] }}"

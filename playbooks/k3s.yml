@@ -1,0 +1,153 @@
+---
+# K3s: terceiro e último playbook, roda após o nodes.yml.
+# Instala o cluster K3s completo em 3 plays sequenciais:
+#   Play 1 - Instala o K3s server no control plane e coleta o token de join.
+#   Play 2 - Instala o K3s agent nos workers usando o token do control plane.
+#   Play 3 - Valida o cluster: aguarda nodes Ready, rotula workers.
+# Conecta como k3s (criado pelo nodes.yml) e usa become para escalar.
+# Instalação é idempotente: verifica se K3s já existe antes de instalar.
+
+- name: Instalar K3s server no control plane
+  hosts: control_plane
+  become: true
+  gather_facts: true
+  vars:
+    ansible_user: k3s
+
+  tasks:
+    # ========================================
+    # FASE 1: Instalar K3s server
+    # ========================================
+
+    - name: Instalar curl
+      apt:
+        name: curl
+        state: present
+        update_cache: yes
+
+    - name: Verificar se K3s já está instalado
+      stat:
+        path: /usr/local/bin/k3s
+      register: k3s_binary
+
+    - name: Verificar se serviço K3s está ativo
+      systemd:
+        name: k3s
+      register: k3s_service
+      failed_when: false
+      when: k3s_binary.stat.exists
+
+    - name: Instalar K3s server
+      shell: curl -sfL https://get.k3s.io | sh -
+      when: not k3s_binary.stat.exists or (k3s_service.status is defined and k3s_service.status.ActiveState != "active")
+
+    - name: Aguardar K3s server ficar pronto
+      command: k3s kubectl get node
+      register: k3s_ready
+      retries: 30
+      delay: 10
+      until: k3s_ready.rc == 0
+      changed_when: false
+
+    # ========================================
+    # FASE 2: Coletar token e IP
+    # ========================================
+
+    - name: Ler token do server
+      slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_token_raw
+
+    - name: Salvar token como fato
+      set_fact:
+        k3s_token: "{{ k3s_token_raw.content | b64decode | trim }}"
+        k3s_server_url: "https://{{ ansible_host }}:6443"
+
+- name: Instalar K3s agent nos workers
+  hosts: workers
+  become: true
+  gather_facts: true
+  vars:
+    ansible_user: k3s
+
+  tasks:
+    # ========================================
+    # FASE 3: Instalar K3s agent
+    # ========================================
+
+    - name: Instalar curl
+      apt:
+        name: curl
+        state: present
+        update_cache: yes
+
+    - name: Verificar se K3s agent já está instalado
+      stat:
+        path: /usr/local/bin/k3s
+      register: k3s_agent_binary
+
+    - name: Verificar se serviço K3s agent está ativo
+      systemd:
+        name: k3s-agent
+      register: k3s_agent_service
+      failed_when: false
+      when: k3s_agent_binary.stat.exists
+
+    - name: Instalar K3s agent
+      shell: >
+        curl -sfL https://get.k3s.io |
+        K3S_URL={{ hostvars['controlplane']['k3s_server_url'] }}
+        K3S_TOKEN={{ hostvars['controlplane']['k3s_token'] }}
+        sh -
+      when: not k3s_agent_binary.stat.exists or (k3s_agent_service.status is defined and k3s_agent_service.status.ActiveState != "active")
+
+    - name: Aguardar K3s agent ficar ativo
+      systemd:
+        name: k3s-agent
+      register: agent_status
+      retries: 15
+      delay: 10
+      until: agent_status.status.ActiveState == "active"
+
+- name: Validar cluster K3s
+  hosts: control_plane
+  become: true
+  gather_facts: false
+  vars:
+    ansible_user: k3s
+
+  tasks:
+    # ========================================
+    # FASE 4: Validar cluster
+    # ========================================
+
+    - name: Aguardar todos os nodes ficarem Ready
+      shell: >
+        k3s kubectl get nodes --no-headers | grep -v Ready | wc -l
+      register: not_ready
+      retries: 30
+      delay: 10
+      until: not_ready.stdout | trim == "0"
+      changed_when: false
+
+    - name: Rotular workers com role worker
+      command: >
+        k3s kubectl label node {{ hostvars[item]['hostname'] }}
+        node-role.kubernetes.io/worker=worker
+        --overwrite
+      loop: "{{ groups['workers'] }}"
+      changed_when: true
+
+    - name: Exibir status do cluster
+      command: k3s kubectl get nodes -o wide
+      register: cluster_status
+      changed_when: false
+
+    - name: Exibir resumo do cluster
+      debug:
+        msg:
+          - "=========================================="
+          - "Cluster K3s instalado com sucesso!"
+          - "=========================================="
+          - "{{ cluster_status.stdout_lines }}"
+          - "=========================================="

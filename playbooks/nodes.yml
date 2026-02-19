@@ -1,0 +1,239 @@
+---
+# Nodes: segundo playbook a rodar, após o bootstrap.yml.
+# Prepara os nodes com todos os pré-requisitos para o K3s.
+# Conecta como root para instalar pacotes, criar o usuário k3s,
+# configurar rede, kernel e segurança.
+# A Fase 7 (Hardening SSH) é o ponto sem retorno: bloqueia o root.
+# Após ela, apenas o usuário k3s consegue acessar os nodes.
+
+- name: Preparar nodes para K3s
+  hosts: all
+  become: true
+  gather_facts: true
+  remote_user: root
+
+  tasks:
+    # ========================================
+    # FASE 1: Instalações
+    # ========================================
+
+    - name: Atualizar cache do apt
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Instalar pacotes necessários
+      apt:
+        name:
+          - htop
+          - ncdu
+          - sudo
+          - git
+          - nano
+          - iptables
+          - systemd-timesyncd
+        state: present
+
+    # ========================================
+    # FASE 2: Configurar NTP
+    # ========================================
+
+    - name: Configurar timezone para America/Sao_Paulo
+      timezone:
+        name: America/Sao_Paulo
+
+    - name: Habilitar e iniciar systemd-timesyncd
+      systemd:
+        name: systemd-timesyncd
+        enabled: yes
+        state: started
+
+    # ========================================
+    # FASE 3: Criar usuário k3s
+    # ========================================
+
+    - name: Criar usuário k3s
+      user:
+        name: k3s
+        shell: /bin/bash
+        create_home: yes
+        groups: sudo
+        append: yes
+
+    - name: Criar diretório .ssh para usuário k3s
+      file:
+        path: /home/k3s/.ssh
+        state: directory
+        owner: k3s
+        group: k3s
+        mode: "0700"
+
+    - name: Copiar chave SSH pública para usuário k3s
+      copy:
+        src: ~/.ssh/id_ed25519.pub
+        dest: /home/k3s/.ssh/authorized_keys
+        owner: k3s
+        group: k3s
+        mode: "0600"
+
+    - name: Configurar sudo sem senha para usuário k3s
+      lineinfile:
+        path: /etc/sudoers.d/k3s
+        line: "k3s ALL=(ALL) NOPASSWD:ALL"
+        create: yes
+        mode: "0440"
+        validate: "visudo -cf %s"
+
+    # ========================================
+    # FASE 4: Configurações que precisam reboot
+    # ========================================
+
+    - name: Configurar hostname
+      hostname:
+        name: "{{ hostname }}"
+
+    - name: Atualizar /etc/hosts com novo hostname
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.1\.1'
+        line: "127.0.1.1 {{ hostname }}"
+
+    - name: Desabilitar IPv6 via sysctl
+      sysctl:
+        name: "{{ item }}"
+        value: "1"
+        state: present
+        reload: yes
+      loop:
+        - net.ipv6.conf.all.disable_ipv6
+        - net.ipv6.conf.default.disable_ipv6
+        - net.ipv6.conf.lo.disable_ipv6
+
+    - name: Desabilitar interface WiFi
+      copy:
+        content: |
+          blacklist brcmfmac
+          blacklist brcmutil
+        dest: /etc/modprobe.d/blacklist-wifi.conf
+        mode: "0644"
+
+    - name: Desabilitar swap permanentemente
+      replace:
+        path: /etc/fstab
+        regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+        replace: '# \1'
+      register: swap_disabled
+
+    - name: Desabilitar swap imediatamente
+      command: swapoff -a
+      when: swap_disabled.changed
+
+    - name: Verificar se cgroups já está configurado
+      command: grep -q "cgroup_memory=1" /boot/firmware/cmdline.txt
+      register: cgroups_check
+      changed_when: false
+      failed_when: false
+
+    - name: Habilitar cgroups memory no boot
+      lineinfile:
+        path: /boot/firmware/cmdline.txt
+        backrefs: yes
+        regexp: "^(.*rootwait.*)$"
+        line: '\1 cgroup_memory=1 cgroup_enable=memory'
+      register: cgroups_enabled
+      when: cgroups_check.rc != 0
+
+    - name: Garantir que cgroups_enabled existe se já estava configurado
+      set_fact:
+        cgroups_enabled:
+          changed: false
+      when: cgroups_check.rc == 0
+
+    # ========================================
+    # FASE 5: Reboot se necessário
+    # ========================================
+
+    - name: Verificar se reboot é necessário
+      set_fact:
+        reboot_required: "{{ cgroups_enabled.changed or swap_disabled.changed }}"
+
+    - name: Reboot do sistema
+      reboot:
+        msg: "Reboot necessário após preparação do node"
+        reboot_timeout: 600
+      when: reboot_required
+
+    - name: Aguardar sistema voltar online
+      wait_for_connection:
+        delay: 10
+        timeout: 600
+      when: reboot_required
+
+    # ========================================
+    # FASE 6: Validações
+    # ========================================
+
+    - name: Verificar se swap está desabilitado
+      command: swapon --show
+      register: swap_status
+      changed_when: false
+      failed_when: swap_status.stdout != ""
+
+    - name: Verificar se cgroups está habilitado
+      command: grep -q "cgroup_memory=1" /boot/firmware/cmdline.txt
+      register: cgroups_validation
+      changed_when: false
+      failed_when: cgroups_validation.rc != 0
+
+    - name: Verificar status do timesyncd
+      systemd:
+        name: systemd-timesyncd
+      register: timesyncd_status
+      failed_when: timesyncd_status.status.ActiveState != "active"
+
+    - name: Verificar usuário k3s está configurado
+      command: id k3s
+      register: k3s_user_check
+      changed_when: false
+      failed_when: k3s_user_check.rc != 0
+
+    # ========================================
+    # FASE 7: Hardening SSH (ponto sem retorno)
+    # ========================================
+
+    - name: Remover chave SSH do root
+      file:
+        path: /root/.ssh/authorized_keys
+        state: absent
+
+    - name: Desabilitar login root via SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PermitRootLogin"
+        line: "PermitRootLogin no"
+
+    - name: Desabilitar autenticação por senha
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PasswordAuthentication"
+        line: "PasswordAuthentication no"
+
+    - name: Reiniciar serviço SSH
+      systemd:
+        name: ssh
+        state: restarted
+
+    - name: Exibir resumo da preparação
+      debug:
+        msg:
+          - "=========================================="
+          - "Node {{ hostname }} preparado com sucesso!"
+          - "=========================================="
+          - "IP:       {{ ansible_host }}"
+          - "Hostname: {{ hostname }}"
+          - "Swap:     Desabilitado"
+          - "Cgroups:  Habilitado"
+          - "NTP:      Ativo"
+          - "User k3s: Configurado"
+          - "SSH root: Desabilitado"
+          - "=========================================="
