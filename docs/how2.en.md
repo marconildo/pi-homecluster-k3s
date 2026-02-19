@@ -96,20 +96,33 @@ Validate:
 ## Project Structure
 
 ```
+della@fedora:~/projetos/pi-homecluster-k3s$ tree
 .
-├── flashcard.sh               # Flashes Debian image to SD card
-├── inventory.yml              # Ansible inventory with node IPs
-├── ansible.cfg                # Ansible configuration
-├── playbooks/
-│   ├── bootstrap.yml          # Installs Python3
-│   ├── bootstrap-validate.sh  # Validates bootstrap
-│   ├── nodes.yml              # Prepares nodes for K3s
-│   ├── nodes-validate.sh      # Validates node preparation
-│   ├── k3s.yml                # Installs K3s cluster
-│   └── k3s-validate.sh        # Validates K3s cluster
-├── docs/                      # Documentation
-└── banner/
-    └── banner.png
+├── ansible.cfg
+├── banner
+│   └── banner.png
+├── docs
+│   ├── blueprint.en.md
+│   ├── blueprint.es.md
+│   ├── blueprint.md
+│   ├── cheatsheet.en.md
+│   ├── cheatsheet.es.md
+│   ├── cheatsheet.md
+│   ├── how2.en.md
+│   ├── how2.es.md
+│   └── how2.md
+├── flashcard.sh
+├── inventory.yml
+├── playbooks
+│   ├── bootstrap-validate.sh
+│   ├── bootstrap.yml
+│   ├── k3s-validate.sh
+│   ├── k3s.yml
+│   ├── nodes-validate.sh
+│   └── nodes.yml
+└── README.md
+
+4 directories, 20 files
 ```
 
 ## Troubleshooting
