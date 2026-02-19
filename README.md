@@ -59,15 +59,10 @@ A partir deste momento toda a configuração é feita via Ansible. Acesse o dire
 
 **Dica de Validação:** O diretório `playbooks` possui scripts como `bootstrap-validate.sh`, `nodes-validate.sh` e `k3s-validate.sh` que podem ser executados após cada etapa para testar e garantir individualmente que o provisionamento ocorreu com sucesso em todos os nós.
 
+VÍDEO NO ASCIINEMA: https://asciinema.org/a/YpwmFfDbT3wCRO3W
+
 ## Conclusão
 
 Após a execução do último playbook, seu cluster estará pronto e operacional. Basta copiar o arquivo de conexão do control plane para a sua máquina ou utilizar a ferramenta `kubectl` diretamente a partir do nó principal para começar a orquestrar seus containers!
 
 <br>
-
-ENJOY THE RIDE!!
-
-Link para o ASCIINEMA com vídeo completo e copiável: https://asciinema.org/a/YpwmFfDbT3wCRO3W
-
-![Terminal Demo](./lab.gif)
-
