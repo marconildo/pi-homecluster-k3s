@@ -67,4 +67,5 @@ Após a execução do último playbook, seu cluster estará pronto e operacional
 
 ENJOY THE RIDE!!
 
-[![asciicast](https://asciinema.org/a/YpwmFfDbT3wCRO3W.svg)](https://asciinema.org/a/YpwmFfDbT3wCRO3W)
+![Terminal Demo](./lab.gif)
+
