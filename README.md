@@ -65,4 +65,8 @@ Após a execução do último playbook, seu cluster estará pronto e operacional
 
 <br>
 
+ENJOY THE RIDE!!
+
+<script src="https://asciinema.org/a/YpwmFfDbT3wCRO3W.js" id="asciicast-YpwmFfDbT3wCRO3W" async="true"></script>
+
 *Nota: Esta documentação foi gerada pelo modelo de IA Gemini 3.1 Pro.*
