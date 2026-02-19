@@ -67,5 +67,7 @@ Após a execução do último playbook, seu cluster estará pronto e operacional
 
 ENJOY THE RIDE!!
 
+Link para o ASCIINEMA com vídeo completo e copiável: https://asciinema.org/a/YpwmFfDbT3wCRO3W
+
 ![Terminal Demo](./lab.gif)
 
