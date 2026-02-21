@@ -63,7 +63,8 @@ A partir deste momento toda a configuração é feita via Ansible. Acesse o dire
 
 **Dica de Validação:** O diretório `playbooks` possui scripts como `bootstrap-validate.sh`, `nodes-validate.sh` e `k3s-validate.sh` que podem ser executados após cada etapa para testar e garantir individualmente que o provisionamento ocorreu com sucesso em todos os nós.
 
-VÍDEO NO ASCIINEMA: https://asciinema.org/a/YpwmFfDbT3wCRO3W
+VÍDEO NO ASCIINEMA: https://asciinema.org/a/oWqD12rdszhDPKR6
+
 
 ## Conclusão
 
