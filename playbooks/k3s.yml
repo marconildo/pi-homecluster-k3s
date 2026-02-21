@@ -19,12 +19,6 @@
     # FASE 1: Instalar K3s server
     # ========================================
 
-    - name: Instalar curl
-      apt:
-        name: curl
-        state: present
-        update_cache: yes
-
     - name: Verificar se K3s já está instalado
       stat:
         path: /usr/local/bin/k3s
@@ -74,12 +68,6 @@
     # ========================================
     # FASE 3: Instalar K3s agent
     # ========================================
-
-    - name: Instalar curl
-      apt:
-        name: curl
-        state: present
-        update_cache: yes
 
     - name: Verificar se K3s agent já está instalado
       stat:

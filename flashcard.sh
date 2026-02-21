@@ -6,8 +6,17 @@
 # Uso:
 #   ./flashcard.sh            Modo normal (grava no SD card)
 #   ./flashcard.sh --dry-run  Mostra o que seria feito sem executar
+#
+# DICA: Execute SEM sudo. O script pedira senha quando necessario.
 
 set -e
+
+# ==========================================
+# Identificar usuario e HOME real
+# ==========================================
+
+REAL_USER=${SUDO_USER:-$USER}
+REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
 
 # ==========================================
 # Variáveis fixas
@@ -71,8 +80,8 @@ DNS="${DNS:-8.8.8.8}"
 read -p "Device [/dev/sdb]: " DEVICE
 DEVICE="${DEVICE:-/dev/sdb}"
 
-read -p "Chave SSH [~/.ssh/id_ed25519.pub]: " SSH_KEY
-SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519.pub}"
+read -p "Chave SSH [$REAL_HOME/.ssh/id_ed25519.pub]: " SSH_KEY
+SSH_KEY="${SSH_KEY:-$REAL_HOME/.ssh/id_ed25519.pub}"
 
 # ==========================================
 # Validações
@@ -114,7 +123,7 @@ if [ "$DRY_RUN" = true ]; then
     echo "Dpkg::Options { \"--force-confdef\"; \"--force-confold\"; }"
     echo ""
     echo "--- /root/.ssh/authorized_keys ---"
-    echo "$(cat $SSH_KEY)"
+    echo "$(cat "$SSH_KEY")"
     echo ""
     echo "==========================================="
     echo "  [DRY-RUN] Nada foi alterado."
@@ -178,7 +187,7 @@ EOF
 
 sudo mkdir -p $MOUNT_POINT/root/.ssh
 sudo chmod 700 $MOUNT_POINT/root/.ssh
-sudo cp $SSH_KEY $MOUNT_POINT/root/.ssh/authorized_keys
+sudo cp "$SSH_KEY" $MOUNT_POINT/root/.ssh/authorized_keys
 sudo chmod 600 $MOUNT_POINT/root/.ssh/authorized_keys
 
 # ==========================================

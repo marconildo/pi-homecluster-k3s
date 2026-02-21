@@ -25,6 +25,7 @@
     - name: Instalar pacotes necessários
       apt:
         name:
+          - curl
           - htop
           - ncdu
           - sudo
