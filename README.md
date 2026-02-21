@@ -28,7 +28,7 @@ chmod +x flashcard.sh
 ./flashcard.sh
 ```
 
-> [!IMPORTANTE]
+> [!IMPORTANT]
 > **Execute o script SEM sudo.** O script solicitará a senha de administrador (`sudo`) internamente apenas para as etapas que realmente exigem privilégios (como `dd` e `mount`). Isso garante que suas variáveis de ambiente (como o caminho da sua Chave SSH) sejam lidas corretamente.
 
 Siga os prompts interativos do script. Quando finalizado, insira o cartão na Raspberry Pi, conecte o cabo de rede e ligue a placa. 
