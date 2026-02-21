@@ -1,6 +1,6 @@
 ![Banner](banner/banner.png)
 
-### Pi Homecluster K3s
+## Pi Homecluster K3s
 
 Bem-vindo ao projeto Pi Homecluster K3s. Este repositório contém toda a automação necessária para provisionar e configurar um cluster Kubernetes (K3s) em placas Raspberry Pi, desde a gravação do sistema operacional no cartão SD até a inicialização completa do cluster.
 
