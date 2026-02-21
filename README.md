@@ -21,11 +21,15 @@ O provisionamento do cluster é dividido em etapas sequenciais e lógicas. Abaix
 
 ### 1. Gravação do Cartão SD
 
-O primeiro passo é gravar a imagem do Debian no cartão SD e preencher configurações importantes, como IP, Gateway, DNS e Chave SSH. Insira o cartão SD no seu computador e execute:
+O primeiro passo é gravar a imagem do Debian no cartão SD e preencher configurações importantes, como IP, Gateway, DNS e Chave SSH. Insira o cartão SD no seu computador, garanta a permissão de execução e execute:
 
 ```bash
-sudo ./flashcard.sh
+chmod +x flashcard.sh
+./flashcard.sh
 ```
+
+> [!IMPORTANT]
+> **Execute o script SEM sudo.** O script solicitará a senha de administrador (`sudo`) internamente apenas para as etapas que realmente exigem privilégios (como `dd` e `mount`). Isso garante que suas variáveis de ambiente (como o caminho da sua Chave SSH) sejam lidas corretamente.
 
 Siga os prompts interativos do script. Quando finalizado, insira o cartão na Raspberry Pi, conecte o cabo de rede e ligue a placa. 
 
